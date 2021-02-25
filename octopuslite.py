@@ -6,6 +6,8 @@ import numpy as np
 from skimage import io
 
 
+OCTOPUSLITE_FILEPATTERN = "img_channel([0-9]+)_position([0-9]+)_time([0-9]+)_z([0-9]+)"
+
 
 @enum.unique
 class Channels(enum.Enum):
@@ -18,11 +20,11 @@ class Channels(enum.Enum):
     MASK = 99
 
 
-def crop_image(image, crop):
+def crop_image(image: np.ndarray, crop: tuple):
     """ Crop an image or volume """
     if crop is None: return image
 
-    assert(isinstance(crop, tuple))
+    assert isinstance(crop, tuple)
 
     dims = image.ndim
     shape = image.shape
@@ -43,7 +45,7 @@ class SimpleOctopusLiteLoader(object):
     """ SimpleOctopusLiteLoader
 
     A simple class to load OctopusLite data from a directory.
-    Caches data once it is loaded to prevent excesive io to
+    Caches data once it is loaded to prevent excessive io to
     the data server.
 
     Can directly address fluorescence channels using the
@@ -114,8 +116,7 @@ class SimpleOctopusLiteLoader(object):
         files = [f for f in os.listdir(self.path) if f.endswith('.tif')]
 
         def parse_filename(fn):
-            pattern = "img_channel([0-9]+)_position([0-9]+)_time([0-9]+)_z([0-9]+)"
-            params = re.match(pattern, fn)
+            params = re.match(OCTOPUSLITE_FILEPATTERN, fn)
             return self.channel_name_from_index(params.group(1)), params.group(3)
 
         channels = {k:[] for k in Channels}
@@ -132,7 +133,7 @@ class SimpleOctopusLiteLoader(object):
         self._files = {k:v for k, v in channels.items() if v}
 
     def _load_channel(self, channel_name):
-        assert(channel_name in self.channels)
+        assert channel_name in self.channels
 
         def load_image(fn):
             im_full = io.imread(os.path.join(self.path, fn))
@@ -144,18 +145,20 @@ class SimpleOctopusLiteLoader(object):
         im = load_image(self._files[channel_name][0])
 
         # preload the stack
-        stack = np.zeros((len(self._files[channel_name]),)+im.shape, dtype=im.dtype)
+        stack = np.zeros(
+            (len(self._files[channel_name]), ) + im.shape, dtype=im.dtype
+        )
         self._shape = stack.shape
 
-        print('Loading: {} --> {} ({})...'.format(channel_name, stack.shape, stack.dtype))
+        print(f"Loading: {channel_name} --> {stack.shape} ({stack.dtype})...")
 
-        stack[0,...] = im
+        stack[0, ...] = im
         for i in range(1, stack.shape[0]):
-            stack[i,...] = load_image(self._files[channel_name][i])
+            stack[i, ...] = load_image(self._files[channel_name][i])
 
         self._data[channel_name] = stack
 
 
     def clear_cache(self, channel_name):
-        print('Warning! You are clearing the cache for: {}'.format(channel_name))
+        print(f"Warning! You are clearing the cache for: {channel_name}")
         self._data[channel_name] = None
