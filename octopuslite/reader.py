@@ -10,7 +10,7 @@ import numpy as np
 from skimage import io
 from typing import Union, Optional
 
-from .utils import remove_outliers, remove_background
+from .utils import estimate_background, remove_outliers
 
 OCTOPUSLITE_FILEPATTERN = "img_channel([0-9]+)_position([0-9]+)_time([0-9]+)_z([0-9]+)"
 
