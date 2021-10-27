@@ -45,8 +45,8 @@ class DaskOctopusLiteLoader:
 
     Usage
     -----
-        >>> octopus =  DaskOctopusLiteLoader('/path/to/your/data/')
-        >>> gfp = octopus["GFP"]
+    >>> octopus =  DaskOctopusLiteLoader('/path/to/your/data/')
+    >>> gfp = octopus["GFP"]
 
     """
     def __init__(
