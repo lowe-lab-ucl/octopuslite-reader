@@ -1,38 +1,23 @@
 import os
 import sys
-import re
-
 import dask
-import dask.array as da
 
+import dask.array as da
 import numpy as np
 
 from skimage import io
 from typing import Union, Optional
 
-from .utils import estimate_background, remove_outliers
-
-OCTOPUSLITE_FILEPATTERN = "img_channel([0-9]+)_position([0-9]+)_time([0-9]+)_z([0-9]+)"
+from .utils import Channels, estimate_background, parse_filename, remove_outliers
+# from .transform import parse_transforms, transform
 
 
 class DaskOctopusLiteLoader:
-    """DaskOctopusLiteLoader
+    """Load multidimensional image stacks using lazy loading.
 
-    A simple class to load OctopusLite data from a directory.
-    Caches data once it is loaded to prevent excessive io to
-    the data server.
-
-    Can directly address fluorescence channels using the
-    `Channels` enumerator:
-
-        Channels.BRIGHTFIELD
-        Channels.GFP
-        Channels.RFP
-        Channels.IRFP
-
-    Usage:
-        octopus = SimpleOctopusLiteLoader('/path/to/your/data/*.tif')
-        gfp = octopus[Channels.GFP]
+    A simple class to load OctopusLite data from a directory. Caches data once
+    it is loaded to prevent excessive I/O to the data server. Can directly
+    address different channels using the `Channels` enumerator.
 
     Parameters
     ----------
@@ -40,16 +25,16 @@ class DaskOctopusLiteLoader:
         The path to the dataset.
     crop : tuple, optional
         An optional tuple which can be used to perform a centred crop on the data.
+    transforms : Path or np.ndarray
+        Transforms to be applied to the image stack.
     remove_background : bool
         Use a estimated polynomial surface to remove uneven illumination.
-
 
     Methods
     -------
     __getitem__ : Channels, str
         Return a dask lazy array of the image data for the channel. If cropping
         has been specified, the images are also cropped to this size.
-
 
     Properties
     ----------
@@ -58,10 +43,17 @@ class DaskOctopusLiteLoader:
     channels :
         Return the channels found in the dataset.
 
+    Usage
+    -----
+        >>> octopus =  DaskOctopusLiteLoader('/path/to/your/data/')
+        >>> gfp = octopus["GFP"]
+
     """
     def __init__(
-        self, path: str,
+        self,
+        path: str,
         crop: Optional[tuple] = None,
+        transforms: Optional[Union[os.PathLike, np.ndarray]] = None,
         remove_background: bool = True,
     ):
         self.path = path
@@ -74,6 +66,7 @@ class DaskOctopusLiteLoader:
 
         # parse the files
         self._parse_files()
+        # self._transforms = parse_transforms(transforms)
 
     def __contains__(self, channel):
         return channel in self.channels
@@ -85,9 +78,6 @@ class DaskOctopusLiteLoader:
     @property
     def shape(self):
         return self._shape
-
-    def channel_name_from_index(self, channel_index: int):
-        return Channels(int(channel_index))
 
     def __getitem__(self, channel_name: Union[str, Channels]):
 
@@ -103,7 +93,7 @@ class DaskOctopusLiteLoader:
     def files(self, channel_name: str) -> list:
         return self._files[Channels[channel_name.upper()]]
 
-    def _load_and_crop(self, fn: str) -> np.ndarray:
+    def _load_and_process(self, fn: str) -> np.ndarray:
         """Load and crop the image."""
         image = io.imread(fn)
 
@@ -138,7 +128,7 @@ class DaskOctopusLiteLoader:
         files = [
             os.path.join(self.path, f)
             for f in os.listdir(self.path)
-            if f.endswith('.tif')
+            if f.endswith((".tif", ".tiff"))
         ]
 
         if not files:
@@ -148,21 +138,16 @@ class DaskOctopusLiteLoader:
         sample = io.imread(files[0])
         self._shape = sample.shape if self._crop is None else self._crop
 
-        def parse_filename(fn):
-            pth, fn = os.path.split(fn)
-            params = re.match(OCTOPUSLITE_FILEPATTERN, fn)
-            return self.channel_name_from_index(params.group(1)), params.group(3)
-
         channels = {k:[] for k in Channels}
 
         # parse the files
         for f in files:
-            channel, time = parse_filename(f)
+            channel = parse_filename(f)['channel']
             channels[channel].append(f)
 
         # sort them by time
         for channel in channels.keys():
-            channels[channel].sort(key=lambda f: parse_filename(f)[1])
+            channels[channel].sort(key=lambda f: parse_filename(f)['time'])
 
         # remove any channels that are empty
         self._files = {k: v for k, v in channels.items() if v}
@@ -171,9 +156,9 @@ class DaskOctopusLiteLoader:
         for channel, files in self._files.items():
             self._lazy_arrays[channel] = [
                 da.from_delayed(
-                    dask.delayed(self._load_and_crop)(fn),
+                    dask.delayed(self._load_and_process)(fn),
                     shape=self._shape,
-                    dtype=np.float32, # sample.dtype
+                    dtype=sample.dtype
                 ) for fn in files
             ]
 
