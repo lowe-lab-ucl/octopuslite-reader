@@ -8,8 +8,15 @@ import numpy as np
 from skimage import io
 from typing import Union, Optional
 
-from .utils import Channels, estimate_background, parse_filename, remove_outliers
-# from .transform import parse_transforms, transform
+from .utils import (
+    Channels,
+    estimate_background,
+    estimate_mask,
+    parse_filename,
+    remove_background,
+    remove_outliers,
+)
+from .transform import parse_transforms
 
 
 class DaskOctopusLiteLoader:
@@ -61,12 +68,13 @@ class DaskOctopusLiteLoader:
         self._lazy_arrays = {}
         self._crop = crop
         self._shape = ()
+        self._remove_background = remove_background
 
         print(f'Using cropping: {crop}')
 
         # parse the files
         self._parse_files()
-        # self._transforms = parse_transforms(transforms)
+        self._transformer = parse_transforms(transforms, len(self._files[Channels.GFP]))
 
     def __contains__(self, channel):
         return channel in self.channels
@@ -97,6 +105,9 @@ class DaskOctopusLiteLoader:
         """Load and crop the image."""
         image = io.imread(fn)
 
+        t = int(parse_filename(fn)['time'])
+        image = self._transformer(image, t)
+
         if self._crop is None:
             return image
 
@@ -104,6 +115,7 @@ class DaskOctopusLiteLoader:
 
         dims = image.ndim
         shape = image.shape
+        dtype = image.dtype
         crop = np.array(self._crop).astype(np.int64)
 
         # check that we don't exceed any dimensions
@@ -117,9 +129,11 @@ class DaskOctopusLiteLoader:
         crops = tuple([cslice(d) for d in range(dims)])
 
         cleaned = remove_outliers(image[crops])
-        bg = estimate_background(cleaned.astype(np.float32))
 
-        return cleaned.astype(np.float32) - bg.astype(np.float32)
+        if self._remove_background:
+            return remove_background(cleaned).astype(dtype)
+
+        return cleaned
 
     def _parse_files(self):
         """Parse out the files from the folder and create lazy arrays."""
@@ -149,6 +163,9 @@ class DaskOctopusLiteLoader:
         for channel in channels.keys():
             channels[channel].sort(key=lambda f: parse_filename(f)['time'])
 
+        # set the output type
+        dtype = sample.dtype #np.float32 if self._remove_background else sample.dtype
+
         # remove any channels that are empty
         self._files = {k: v for k, v in channels.items() if v}
 
@@ -158,7 +175,7 @@ class DaskOctopusLiteLoader:
                 da.from_delayed(
                     dask.delayed(self._load_and_process)(fn),
                     shape=self._shape,
-                    dtype=sample.dtype
+                    dtype=dtype
                 ) for fn in files
             ]
 
