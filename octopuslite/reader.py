@@ -131,7 +131,7 @@ class DaskOctopusLiteLoader:
         cleaned = remove_outliers(image[crops])
 
         if self._remove_background:
-            return remove_background(cleaned).astype(dtype)
+            return remove_background(cleaned) #.astype(dtype)
 
         return cleaned
 
@@ -164,7 +164,7 @@ class DaskOctopusLiteLoader:
             channels[channel].sort(key=lambda f: parse_filename(f)['time'])
 
         # set the output type
-        dtype = sample.dtype #np.float32 if self._remove_background else sample.dtype
+        dtype = np.float32 if self._remove_background else sample.dtype
 
         # remove any channels that are empty
         self._files = {k: v for k, v in channels.items() if v}
