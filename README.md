@@ -11,4 +11,5 @@ Usage
 -----
 >>> octopus =  DaskOctopusLiteLoader('/path/to/your/data/')
 >>> gfp = octopus["GFP"]
+>>> gfp_filenames = octopus.files("GFP")
 ```
