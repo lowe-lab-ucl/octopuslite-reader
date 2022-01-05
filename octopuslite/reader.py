@@ -81,7 +81,9 @@ class DaskOctopusLiteLoader:
 
         # parse the files
         self._parse_files()
-        self._transformer = parse_transforms(transforms, len(self._files[Channels.GFP]))
+        self._transformer = parse_transforms(
+            transforms, len(self._files[Channels.GFP])
+        )
 
     def __contains__(self, channel):
         return channel in self.channels
