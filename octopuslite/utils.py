@@ -4,6 +4,7 @@ import re
 import numpy as np
 
 from scipy.ndimage import median_filter
+from typing import Tuple
 
 
 OCTOPUSLITE_FILEPATTERN = (
@@ -19,7 +20,12 @@ class Channels(enum.Enum):
     RFP = 2
     IRFP = 3
     PHASE = 4
-    WEIGHTS = 98
+
+    WEIGHTS = 50
+
+    MASK_IRFP = 96
+    MASK_RFP = 97
+    MASK_GFP = 98
     MASK = 99
 
 
@@ -39,6 +45,28 @@ def remove_outliers(x: np.ndarray) -> np.ndarray:
     med_x = median_filter(x, size=2)
     mask = x > med_x
     x = x * (1-mask) + (mask*med_x)
+    return x
+
+
+def remove_background(x: np.ndarray) -> np.ndarray:
+    """Remove background using a polynomial surface.
+
+    Parameters
+    ----------
+    x : np.ndarray
+        An input image .
+
+    Returns
+    -------
+    corrected : np.ndarray
+        The corrected input image, with the background removed.
+    """
+    maskh, maskw = estimate_mask(x)
+    x = x.astype(np.float32)
+    bg = estimate_background(x[maskh, maskw])
+    corrected = x[maskh, maskw] - bg
+    corrected = (corrected - np.min(corrected))
+    x[maskh, maskw] = corrected
     return x
 
 
@@ -86,6 +114,29 @@ def estimate_background(x: np.ndarray) -> np.ndarray:
     # calculate the surface
     background_estimate = k[0] + k[1]*u + k[2]*v + k[3]*u*u + k[4]*u*v + k[5]*v*v
     return background_estimate
+
+
+def estimate_mask(x: np.ndarray) -> Tuple[slice]:
+    """Estimate the mask of a frame.
+
+    Masking may occur when frame registration has been performed.
+
+    Parameters
+    ----------
+    x : np.ndarray
+        An input image which is to be used for estimating the background.
+
+    Returns
+    -------
+    mask : tuple (2,)
+        Slices representing the mask of the image.
+    """
+    if hasattr(x, "compute"):
+        x = x.compute()
+    nonzero = np.nonzero(x)
+    sh = slice(np.min(nonzero[0]), np.max(nonzero[0])+1, 1)
+    sw = slice(np.min(nonzero[1]), np.max(nonzero[1])+1, 1)
+    return sh, sw
 
 
 def parse_filename(filename: os.PathLike) -> dict:
