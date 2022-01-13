@@ -23,7 +23,9 @@ class StackTransformer:
 
 
 
-def parse_transforms(path: os.PathLike, n: int) -> StackTransformer:
+def parse_transforms(path: os.PathLike,
+                    #n: int
+                    ) -> StackTransformer:
     """Parse a file or folder containing registration transforms.
 
     Parameters
@@ -31,8 +33,9 @@ def parse_transforms(path: os.PathLike, n: int) -> StackTransformer:
     path : PathLike
         A path to either a numpy file of transforms, or a folder containing
         transforms as XML files.
-    n : int
-        The number of frames in the movie.
+    # # may become necessary when alternate transform format is used
+    # n : int
+    #     The number of frames in the movie.
 
     Returns
     -------
@@ -50,7 +53,7 @@ def parse_transforms(path: os.PathLike, n: int) -> StackTransformer:
     # # get the transform files and then sort them by time
     # transform_files = [f for f in os.listdir(path) if f.endswith(".xml")]
     # transform_files.sort(key=lambda f: parse_filename(f)['time'])
-    #
+    # n = len(transform_files)
     # transforms = np.empty((n, 2), dtype=np.float32) * np.nan
     #
     # for file in transform_files:
