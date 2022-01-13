@@ -20,7 +20,12 @@ class Channels(enum.Enum):
     RFP = 2
     IRFP = 3
     PHASE = 4
-    WEIGHTS = 98
+
+    WEIGHTS = 50
+
+    MASK_IRFP = 96
+    MASK_RFP = 97
+    MASK_GFP = 98
     MASK = 99
 
 
