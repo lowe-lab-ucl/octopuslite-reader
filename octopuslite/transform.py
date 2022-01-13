@@ -17,7 +17,8 @@ class StackTransformer:
         if self.transforms is None:
             return x
 
-        tform = tf.AffineTransform(translation=self.transforms[idx, ...])
+        #tform = tf.AffineTransform(translation=self.transforms[idx, ...])
+        tform = tf.AffineTransform(translation=self.transforms[idx, :2, 2])
         return tf.warp(x, tform, preserve_range=True)
 
 
