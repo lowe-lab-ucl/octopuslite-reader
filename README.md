@@ -15,7 +15,7 @@ Usage
                                     remove_background = True)
 >>> gfp = images["GFP"]
 >>> gfp_filenames = images.files("GFP")
-```
+
 
 Parameters
   ----------
@@ -27,3 +27,4 @@ Parameters
       Transforms to be applied to the image stack.
   remove_background : bool
       Use a estimated polynomial surface to remove uneven illumination.
+```
