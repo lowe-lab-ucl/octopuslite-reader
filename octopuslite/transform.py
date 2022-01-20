@@ -17,15 +17,12 @@ class StackTransformer:
         if self.transforms is None:
             return x
 
-        #tform = tf.AffineTransform(translation=self.transforms[idx, ...])
         tform = tf.AffineTransform(translation=self.transforms[idx, :2, 2])
         return tf.warp(x, tform, preserve_range=True)
 
 
 
-def parse_transforms(path: os.PathLike,
-                    #n: int
-                    ) -> StackTransformer:
+def parse_transforms(path: os.PathLike) -> StackTransformer:
     """Parse a file or folder containing registration transforms.
 
     Parameters
@@ -33,9 +30,6 @@ def parse_transforms(path: os.PathLike,
     path : PathLike
         A path to either a numpy file of transforms, or a folder containing
         transforms as XML files.
-    # # may become necessary when alternate transform format is used
-    # n : int
-    #     The number of frames in the movie.
 
     Returns
     -------
