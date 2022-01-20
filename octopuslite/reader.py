@@ -16,7 +16,7 @@ from .utils import (
     remove_background,
     remove_outliers,
 )
-from .transform import parse_transforms
+from transform import parse_transforms
 
 
 class DaskOctopusLiteLoader:
@@ -66,11 +66,13 @@ class DaskOctopusLiteLoader:
     def __init__(
         self,
         path: str,
+        filepattern: Optional[str] = None,
         crop: Optional[tuple] = None,
         transforms: Optional[Union[os.PathLike, np.ndarray]] = None,
         remove_background: bool = True,
     ):
         self.path = path
+        self.filepattern = filepattern
         self._files = {}
         self._lazy_arrays = {}
         self._crop = crop
@@ -114,7 +116,7 @@ class DaskOctopusLiteLoader:
         """Load and crop the image."""
         image = io.imread(fn)
 
-        t = int(parse_filename(fn)['time'])
+        t = int(parse_filename(fn, self.filepattern)['time'])
         image = self._transformer(image, t)
 
         if self._crop is None:
@@ -165,12 +167,14 @@ class DaskOctopusLiteLoader:
 
         # parse the files
         for f in files:
-            channel = parse_filename(f)['channel']
+            channel = parse_filename(f, self.filepattern)['channel']
             channels[channel].append(f)
 
         # sort them by time
         for channel in channels.keys():
-            channels[channel].sort(key=lambda f: parse_filename(f)['time'])
+            channels[channel].sort(
+                key=lambda f: parse_filename(f, self.filepattern)['time']
+            )
 
         # set the output type
         dtype = np.float32 if self._remove_background else sample.dtype

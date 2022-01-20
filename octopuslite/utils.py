@@ -134,13 +134,17 @@ def estimate_mask(x: np.ndarray) -> Tuple[slice]:
     return sh, sw
 
 
-def parse_filename(filename: os.PathLike) -> dict:
+def parse_filename(filename: os.PathLike,
+                   filepattern: str = None) -> dict:
     """Parse an OctopusLite filename and retreive metadata from the file.
 
     Parameters
     ----------
     filename : PathLike
         The full path to a file to parse.
+    filepattern : str
+        The alternative filepattern to the default
+        OCTOPUSLITE_FILEPATTERN specified above.
 
     Returns
     -------
@@ -148,7 +152,11 @@ def parse_filename(filename: os.PathLike) -> dict:
         A dictionary containing the parsed metadata.
     """
     pth, filename = os.path.split(filename)
-    params = re.match(OCTOPUSLITE_FILEPATTERN, filename)
+
+    fp = OCTOPUSLITE_FILEPATTERN
+    if filepattern is not None:
+        fp = filepattern
+    params = re.match(fp, filename)
 
     metadata = {
         "filename": filename,
