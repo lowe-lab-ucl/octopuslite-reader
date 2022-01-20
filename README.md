@@ -17,7 +17,7 @@ Usage
 >>> gfp_filenames = images.files("GFP")
 
 
-Parameters
+  Parameters
   ----------
   path : str
       The path to the dataset.
