@@ -23,8 +23,8 @@ Parameters
       The path to the dataset.
   crop : tuple, optional
       An optional tuple which can be used to perform a centred crop on the data.
-  transforms : Path or np.ndarray
+  transforms : np.ndarray, optional
       Transforms to be applied to the image stack.
-  remove_background : bool
+  remove_background : bool, optional
       Use a estimated polynomial surface to remove uneven illumination.
 ```
