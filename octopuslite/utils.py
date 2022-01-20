@@ -22,7 +22,6 @@ class Channels(enum.Enum):
     PHASE = 4
 
     WEIGHTS = 50
-
     MASK_IRFP = 96
     MASK_RFP = 97
     MASK_GFP = 98
