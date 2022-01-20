@@ -32,8 +32,8 @@ class DaskOctopusLiteLoader:
         The path to the dataset.
     crop : tuple, optional
         An optional tuple which can be used to perform a centred crop on the data.
-    transforms : Path or np.ndarray
-        Transforms to be applied to the image stack.
+    transforms : Path to transform matrix
+        Transform matrix (as np.ndarray) to be applied to the image stack.
     remove_background : bool
         Use a estimated polynomial surface to remove uneven illumination.
 
@@ -67,7 +67,7 @@ class DaskOctopusLiteLoader:
         self,
         path: str,
         crop: Optional[tuple] = None,
-        transforms: Optional[Union[os.PathLike, np.ndarray]] = None,
+        transforms: Optional[os.PathLike] = None,
         remove_background: bool = True,
     ):
         self.path = path
@@ -81,10 +81,7 @@ class DaskOctopusLiteLoader:
 
         # parse the files
         self._parse_files()
-        self._transformer = parse_transforms(
-            transforms,
-            #len(self._files[Channels.GFP]) #not currently needed
-        )
+        self._transformer = parse_transforms(transforms)
 
     def __contains__(self, channel):
         return channel in self.channels
