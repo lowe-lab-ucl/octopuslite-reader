@@ -1,22 +1,13 @@
 import os
-import sys
-import dask
+from typing import Optional, Union
 
+import dask
 import dask.array as da
 import numpy as np
-
 from skimage import io
-from typing import Union, Optional
 
-from .utils import (
-    Channels,
-    estimate_background,
-    estimate_mask,
-    parse_filename,
-    remove_background,
-    remove_outliers,
-)
 from .transform import parse_transforms
+from .utils import Channels, parse_filename, remove_background, remove_outliers
 
 
 class DaskOctopusLiteLoader:
@@ -77,7 +68,7 @@ class DaskOctopusLiteLoader:
         self._shape = ()
         self._remove_background = remove_background
 
-        print(f'Using cropping: {crop}')
+        print(f"Using cropping: {crop}")
 
         # parse the files
         self._parse_files()
@@ -104,7 +95,6 @@ class DaskOctopusLiteLoader:
 
         return self._lazy_arrays[channel_name]
 
-
     def files(self, channel_name: str) -> list:
         return self._files[Channels[channel_name.upper()]]
 
@@ -112,35 +102,41 @@ class DaskOctopusLiteLoader:
         """Load and crop the image."""
         image = io.imread(fn)
 
-        t = int(parse_filename(fn)['time'])
-        image = self._transformer(image, t)
+        if self._crop is not None:
 
-        if self._crop is None:
+            assert isinstance(self._crop, tuple)
+
+            dims = image.ndim
+            shape = image.shape
+            crop = np.array(self._crop).astype(np.int64)
+
+            # check that we don't exceed any dimensions
+            assert all([crop[i] <= s for i, s in enumerate(shape)])
+
+            # automagically build the slices for the array
+            cslice = lambda d: slice(
+                int((shape[d] - crop[d]) // 2), int((shape[d] - crop[d]) // 2 + crop[d])
+            )
+            crops = tuple([cslice(d) for d in range(dims)])
+            image = image[crops]
+
+        # check channel to see if label
+        channel = parse_filename(fn)["channel"]
+        # labels cannot be preprocessed so return here
+        if channel.value >= 50:
             return image
 
-        assert isinstance(self._crop, tuple)
-
-        dims = image.ndim
-        shape = image.shape
-        dtype = image.dtype
-        crop = np.array(self._crop).astype(np.int64)
-
-        # check that we don't exceed any dimensions
-        assert all([crop[i] <= s for i, s in enumerate(shape)])
-
-        # automagically build the slices for the array
-        cslice = lambda d: slice(
-            int((shape[d] - crop[d]) // 2),
-            int((shape[d] - crop[d]) // 2 + crop[d])
-        )
-        crops = tuple([cslice(d) for d in range(dims)])
-
-        cleaned = remove_outliers(image[crops])
+        if self._transformer is not None:
+            t = int(parse_filename(fn)["time"])
+            image = self._transformer(image, t)
 
         if self._remove_background:
-            return remove_background(cleaned) #.astype(dtype)
+            cleaned = remove_outliers(image)
+            image = remove_background(cleaned)
+            if self._crop is None:
+                print("Background removal works best on cropped, aligned image")
 
-        return cleaned
+        return image
 
     def _parse_files(self):
         """Parse out the files from the folder and create lazy arrays."""
@@ -159,16 +155,16 @@ class DaskOctopusLiteLoader:
         sample = io.imread(files[0])
         self._shape = sample.shape if self._crop is None else self._crop
 
-        channels = {k:[] for k in Channels}
+        channels = {k: [] for k in Channels}
 
         # parse the files
         for f in files:
-            channel = parse_filename(f)['channel']
+            channel = parse_filename(f)["channel"]
             channels[channel].append(f)
 
         # sort them by time
         for channel in channels.keys():
-            channels[channel].sort(key=lambda f: parse_filename(f)['time'])
+            channels[channel].sort(key=lambda f: parse_filename(f)["time"])
 
         # set the output type
         dtype = np.float32 if self._remove_background else sample.dtype
@@ -182,8 +178,9 @@ class DaskOctopusLiteLoader:
                 da.from_delayed(
                     dask.delayed(self._load_and_process)(fn),
                     shape=self._shape,
-                    dtype=dtype
-                ) for fn in files
+                    dtype=dtype,
+                )
+                for fn in files
             ]
 
             # concatenate them along the time axis
