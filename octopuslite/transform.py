@@ -1,11 +1,10 @@
 import os
+
 # import xml.etree.ElementTree as ET
 import numpy as np
-
 import skimage.transform as tf
 
-
-from .utils import parse_filename
+# from .utils import parse_filename
 
 
 class StackTransformer:
@@ -19,7 +18,6 @@ class StackTransformer:
 
         tform = tf.AffineTransform(translation=self.transforms[idx, :2, 2])
         return tf.warp(x, tform, preserve_range=True)
-
 
 
 def parse_transforms(path: os.PathLike) -> StackTransformer:
