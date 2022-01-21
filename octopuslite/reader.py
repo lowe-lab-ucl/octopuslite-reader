@@ -134,7 +134,7 @@ class DaskOctopusLiteLoader:
             cleaned = remove_outliers(image)
             image = remove_background(cleaned)
             if self._crop is None:
-                raise Exception ("Background removal works best on cropped, aligned image")
+                raise Exception("Background removal works best on cropped, aligned image")
 
         return image
 
