@@ -123,7 +123,7 @@ class DaskOctopusLiteLoader:
         # check channel to see if label
         channel = parse_filename(fn)["channel"]
         # labels cannot be preprocessed so return here
-        if channel.value >= 50:
+        if channel.name.startswith(('MASK', 'WEIGHTS')):
             return image
 
         if self._transformer is not None:
@@ -134,7 +134,7 @@ class DaskOctopusLiteLoader:
             cleaned = remove_outliers(image)
             image = remove_background(cleaned)
             if self._crop is None:
-                print("Background removal works best on cropped, aligned image")
+                raise Exception ("Background removal works best on cropped, aligned image")
 
         return image
 
