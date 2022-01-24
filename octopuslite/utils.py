@@ -181,7 +181,6 @@ def image_generator(files, crop: Optional[tuple] = None):
         An optional tuple which can be used to perform a centred crop on the
         data.
     """
-    #get dims
     shape = imread(files[0]).shape
     dims = imread(files[0]).ndim
     if crop == None:

@@ -66,7 +66,7 @@ class DaskOctopusLiteLoader:
         crop: Optional[tuple] = None,
         transforms: Optional[os.PathLike] = None,
         remove_background: bool = True,
-        remove_blank_frames: [Optional[tuple]] = None #  Union[Optional[tuple, bool]] = None,
+        remove_blank_frames: Union[tuple, bool] = None
     ):
         self.path = path
         self._files = {}
@@ -168,10 +168,16 @@ class DaskOctopusLiteLoader:
         channels = {k: [] for k in Channels}
 
         # remove blank frames and parse files
-        if self._remove_blank_frames is not None:
+        if self._remove_blank_frames is not None or False:
+            if isinstance(self._remove_blank_frames, tuple):
+                max = np.max(self._remove_blank_frames)
+                min = np.min(self._remove_blank_frames)
+            else:
+                max, min = 200, 2
             blank_frames = []
             for f, image in zip(files,image_generator(files)):
-                if np.max(self._remove_blank_frames) < np.mean(image) or np.mean(image) < np.min(self._remove_blank_frames):
+                if max < np.mean(image) or np.mean(image) < min:
+                #if np.max(self._remove_blank_frames) < np.mean(image) or np.mean(image) < np.min(self._remove_blank_frames):
                     blank_frames.append(parse_filename(f)["time"])
             for f in files:
                 if parse_filename(f)["time"] in blank_frames:
@@ -179,7 +185,7 @@ class DaskOctopusLiteLoader:
                 channel = parse_filename(f)["channel"]
                 channels[channel].append(f)
 
-        # parse the files
+        # parse all the files
         else:
             for f in files:
                 channel = parse_filename(f)["channel"]
