@@ -7,7 +7,7 @@ import numpy as np
 from skimage import io
 
 from .transform import parse_transforms
-from .utils import Channels, parse_filename, remove_background, remove_outliers
+from .utils import Channels, parse_filename, remove_background, remove_outliers, image_generator
 
 
 class DaskOctopusLiteLoader:
@@ -27,6 +27,12 @@ class DaskOctopusLiteLoader:
         Transform matrix (as np.ndarray) to be applied to the image stack.
     remove_background : bool
         Use a estimated polynomial surface to remove uneven illumination.
+    remove_blank_frames : tuple or bool, optional
+        An optional tuple of (minimum pixel value, maximum pixel value) that determines
+        whether a frame is excluded on the premise that the mean of the image falls
+        outside of the pre-defined parameters. If no tuple is specified then the
+        default (min, max) of (2, 200) is used. Used to exclude frames where the
+        light has not fired or has overexposed for some reason.
 
     Methods
     -------
@@ -60,6 +66,7 @@ class DaskOctopusLiteLoader:
         crop: Optional[tuple] = None,
         transforms: Optional[os.PathLike] = None,
         remove_background: bool = True,
+        remove_blank_frames: [Optional[tuple]] = None #  Union[Optional[tuple, bool]] = None,
     ):
         self.path = path
         self._files = {}
@@ -67,8 +74,10 @@ class DaskOctopusLiteLoader:
         self._crop = crop
         self._shape = ()
         self._remove_background = remove_background
+        self._remove_blank_frames = remove_blank_frames
 
-        print(f"Using cropping: {crop}")
+        if self._crop != None:
+            print(f"Using cropping: {crop}")
 
         # parse the files
         self._parse_files()
@@ -134,7 +143,8 @@ class DaskOctopusLiteLoader:
             cleaned = remove_outliers(image)
             image = remove_background(cleaned)
             if self._crop is None:
-                raise Exception("Background removal works best on cropped, aligned image")
+                import warnings
+                warnings.warn("Background removal works best on cropped, aligned image. Will fail on uncropped, aligned images due to border effect.")
 
         return image
 
@@ -157,10 +167,23 @@ class DaskOctopusLiteLoader:
 
         channels = {k: [] for k in Channels}
 
+        # remove blank frames and parse files
+        if self._remove_blank_frames is not None:
+            blank_frames = []
+            for f, image in zip(files,image_generator(files)):
+                if np.max(self._remove_blank_frames) < np.mean(image) or np.mean(image) < np.min(self._remove_blank_frames):
+                    blank_frames.append(parse_filename(f)["time"])
+            for f in files:
+                if parse_filename(f)["time"] in blank_frames:
+                    continue
+                channel = parse_filename(f)["channel"]
+                channels[channel].append(f)
+
         # parse the files
-        for f in files:
-            channel = parse_filename(f)["channel"]
-            channels[channel].append(f)
+        else:
+            for f in files:
+                channel = parse_filename(f)["channel"]
+                channels[channel].append(f)
 
         # sort them by time
         for channel in channels.keys():
@@ -173,6 +196,7 @@ class DaskOctopusLiteLoader:
         self._files = {k: v for k, v in channels.items() if v}
 
         # now set up the lazy loaders
+        #for channel, files in zip(channels, files):
         for channel, files in self._files.items():
             self._lazy_arrays[channel] = [
                 da.from_delayed(
