@@ -177,7 +177,6 @@ class DaskOctopusLiteLoader:
             blank_frames = []
             for f, image in zip(files,image_generator(files)):
                 if max < np.mean(image) or np.mean(image) < min:
-                #if np.max(self._remove_blank_frames) < np.mean(image) or np.mean(image) < np.min(self._remove_blank_frames):
                     blank_frames.append(parse_filename(f)["time"])
             for f in files:
                 if parse_filename(f)["time"] in blank_frames:
