@@ -111,6 +111,10 @@ class DaskOctopusLiteLoader:
         """Load and crop the image."""
         image = io.imread(fn)
 
+        if self._transformer is not None:
+            t = int(parse_filename(fn)["time"])
+            image = self._transformer(image, t)
+
         if self._crop is not None:
 
             assert isinstance(self._crop, tuple)
@@ -134,10 +138,6 @@ class DaskOctopusLiteLoader:
         # labels cannot be preprocessed so return here
         if channel.name.startswith(('MASK', 'WEIGHTS')):
             return image
-
-        if self._transformer is not None:
-            t = int(parse_filename(fn)["time"])
-            image = self._transformer(image, t)
 
         if self._remove_background:
             cleaned = remove_outliers(image)
