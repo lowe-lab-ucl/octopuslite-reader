@@ -1,10 +1,7 @@
 import os
 
-# import xml.etree.ElementTree as ET
 import numpy as np
 import skimage.transform as tf
-
-# from .utils import parse_filename
 
 
 class StackTransformer:
