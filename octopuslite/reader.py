@@ -7,7 +7,13 @@ import numpy as np
 from skimage import io
 
 from .transform import parse_transforms
-from .utils import Channels, parse_filename, remove_background, remove_outliers, image_generator
+from .utils import (
+    Channels,
+    image_generator,
+    parse_filename,
+    remove_background,
+    remove_outliers,
+)
 
 
 class DaskOctopusLiteLoader:
@@ -66,7 +72,7 @@ class DaskOctopusLiteLoader:
         crop: Optional[tuple] = None,
         transforms: Optional[os.PathLike] = None,
         remove_background: bool = True,
-        remove_blank_frames: Union[tuple, bool] = None
+        remove_blank_frames: Union[tuple, bool] = None,
     ):
         self.path = path
         self._files = {}
@@ -76,7 +82,7 @@ class DaskOctopusLiteLoader:
         self._remove_background = remove_background
         self._remove_blank_frames = remove_blank_frames
 
-        if self._crop != None:
+        if self._crop is not None:
             print(f"Using cropping: {crop}")
 
         # parse the files
@@ -136,7 +142,7 @@ class DaskOctopusLiteLoader:
         # check channel to see if label
         channel = parse_filename(fn)["channel"]
         # labels cannot be preprocessed so return here
-        if channel.name.startswith(('MASK', 'WEIGHTS')):
+        if channel.name.startswith(("MASK", "WEIGHTS")):
             return image
 
         if self._remove_background:
@@ -144,7 +150,10 @@ class DaskOctopusLiteLoader:
             image = remove_background(cleaned)
             if self._crop is None:
                 import warnings
-                warnings.warn("Background removal works best on cropped, aligned image. Will fail on uncropped, aligned images due to border effect.")
+
+                warnings.warn(
+                    "Background removal works best on cropped, aligned image. Will fail on uncropped, aligned images due to border effect."
+                )
 
         return image
 
@@ -175,7 +184,7 @@ class DaskOctopusLiteLoader:
             else:
                 max, min = 200, 2
             blank_frames = []
-            for f, image in zip(files,image_generator(files)):
+            for f, image in zip(files, image_generator(files)):
                 if max < np.mean(image) or np.mean(image) < min:
                     blank_frames.append(parse_filename(f)["time"])
             for f in files:
@@ -201,7 +210,6 @@ class DaskOctopusLiteLoader:
         self._files = {k: v for k, v in channels.items() if v}
 
         # now set up the lazy loaders
-        #for channel, files in zip(channels, files):
         for channel, files in self._files.items():
             self._lazy_arrays[channel] = [
                 da.from_delayed(
