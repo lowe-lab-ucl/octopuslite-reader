@@ -33,11 +33,10 @@ class DaskOctopusLiteLoader:
         Transform matrix (as np.ndarray) to be applied to the image stack.
     remove_background : bool
         Use a estimated polynomial surface to remove uneven illumination.
-    remove_blank_frames : tuple or bool, optional
+    remove_blank_frames : tuple , optional
         An optional tuple of (minimum pixel value, maximum pixel value) that determines
         whether a frame is excluded on the premise that the mean of the image falls
-        outside of the pre-defined parameters. If no tuple is specified then the
-        default (min, max) of (2, 200) is used. Used to exclude frames where the
+        outside of the pre-defined parameters. Used to exclude frames where the
         light has not fired or has overexposed for some reason.
 
     Methods
@@ -72,7 +71,7 @@ class DaskOctopusLiteLoader:
         crop: Optional[tuple] = None,
         transforms: Optional[os.PathLike] = None,
         remove_background: bool = True,
-        remove_blank_frames: Union[tuple, bool] = None,
+        remove_blank_frames: Optional[tuple] = None,
     ):
         self.path = path
         self._files = {}
@@ -177,12 +176,10 @@ class DaskOctopusLiteLoader:
         channels = {k: [] for k in Channels}
 
         # remove blank frames and parse files
-        if self._remove_blank_frames is not None or False:
+        if self._remove_blank_frames is not None:
             if isinstance(self._remove_blank_frames, tuple):
                 max = np.max(self._remove_blank_frames)
                 min = np.min(self._remove_blank_frames)
-            else:
-                max, min = 200, 2
             blank_frames = []
             for f, image in zip(files, image_generator(files)):
                 if max < np.mean(image) or np.mean(image) < min:
