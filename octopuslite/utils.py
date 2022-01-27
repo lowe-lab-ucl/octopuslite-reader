@@ -1,11 +1,11 @@
 import enum
 import os
 import re
+from typing import Optional, Tuple
+
 import numpy as np
-
 from scipy.ndimage import median_filter
-from typing import Tuple
-
+from skimage.io import imread
 
 OCTOPUSLITE_FILEPATTERN = (
     "img_channel(?P<channel>[0-9]+)_position(?P<position>[0-9]+)"
@@ -38,11 +38,11 @@ def remove_outliers(x: np.ndarray) -> np.ndarray:
     Returns
     -------
     x : np.ndarray
-    	An image with the bright outlier pixels removed.
+        An image with the bright outlier pixels removed.
     """
     med_x = median_filter(x, size=2)
     mask = x > med_x
-    x = x * (1-mask) + (mask*med_x)
+    x = x * (1 - mask) + (mask * med_x)
     return x
 
 
@@ -63,7 +63,7 @@ def remove_background(x: np.ndarray) -> np.ndarray:
     x = x.astype(np.float32)
     bg = estimate_background(x[maskh, maskw])
     corrected = x[maskh, maskw] - bg
-    corrected = (corrected - np.min(corrected))
+    corrected = corrected - np.min(corrected)
     x[maskh, maskw] = corrected
     return x
 
@@ -83,19 +83,19 @@ def estimate_background(x: np.ndarray) -> np.ndarray:
     Returns
     -------
     background_estimate : np.ndarray
-    	A second order polynomial surface representing the estimated background
+        A second order polynomial surface representing the estimated background
         of the image.
     """
 
     # set up arrays for params and the output surface
-    A = np.zeros((x.shape[0]*x.shape[1], 6))
+    A = np.zeros((x.shape[0] * x.shape[1], 6))
     background_estimate = np.zeros((x.shape[1], x.shape[0]))
 
     u, v = np.meshgrid(
         np.arange(x.shape[1], dtype=np.float32),
         np.arange(x.shape[0], dtype=np.float32),
     )
-    A[:, 0] = 1.
+    A[:, 0] = 1.0
     A[:, 1] = np.reshape(u, (x.shape[0] * x.shape[1],))
     A[:, 2] = np.reshape(v, (x.shape[0] * x.shape[1],))
     A[:, 3] = A[:, 1] * A[:, 1]
@@ -110,7 +110,9 @@ def estimate_background(x: np.ndarray) -> np.ndarray:
     k = np.squeeze(np.array(np.dot(k, np.ravel(x))))
 
     # calculate the surface
-    background_estimate = k[0] + k[1]*u + k[2]*v + k[3]*u*u + k[4]*u*v + k[5]*v*v
+    background_estimate = (
+        k[0] + k[1] * u + k[2] * v + k[3] * u * u + k[4] * u * v + k[5] * v * v
+    )
     return background_estimate
 
 
@@ -132,8 +134,8 @@ def estimate_mask(x: np.ndarray) -> Tuple[slice]:
     if hasattr(x, "compute"):
         x = x.compute()
     nonzero = np.nonzero(x)
-    sh = slice(np.min(nonzero[0]), np.max(nonzero[0])+1, 1)
-    sw = slice(np.min(nonzero[1]), np.max(nonzero[1])+1, 1)
+    sh = slice(np.min(nonzero[0]), np.max(nonzero[0]) + 1, 1)
+    sw = slice(np.min(nonzero[1]), np.max(nonzero[1]) + 1, 1)
     return sh, sw
 
 
@@ -155,11 +157,44 @@ def parse_filename(filename: os.PathLike) -> dict:
 
     metadata = {
         "filename": filename,
-        "channel": Channels(int(params.group('channel'))),
-        "time": params.group('time'),
-        "position": params.group('position'),
-        "z": params.group('z'),
+        "channel": Channels(int(params.group("channel"))),
+        "time": params.group("time"),
+        "position": params.group("position"),
+        "z": params.group("z"),
         # "timestamp": os.stat(filename).st_mtime,
     }
 
     return metadata
+
+
+def image_generator(files, crop: Optional[tuple] = None):
+    """Image generator for iterative procesess
+
+    For many timelapse data related procesess (such as calculating mean values
+    and localising objects), using a generator function to iterative load single
+    frames is quicker than computing each frame and calculating using dask.
+
+    Parameters
+    ----------
+    files : list
+        A list of image files which you wish to iterate over. Can be easily
+        generated using the DaskOctopusLiteLoader function 'files'.
+        E.g. image_generator(DaskOctopusLiteLoader.files('channel name'))
+    crop : tuple, optional
+        An optional tuple which can be used to perform a centred crop on the
+        image data.
+    """
+    shape = imread(files[0]).shape
+    dims = imread(files[0]).ndim
+    if crop is None:
+        for filename in files:
+            img = imread(filename)
+            yield img
+    else:
+        cslice = lambda d: slice(
+            int((shape[d] - crop[d]) // 2), int((shape[d] - crop[d]) // 2 + crop[d])
+        )
+        crops = tuple([cslice(d) for d in range(dims)])
+        for filename in files:
+            img = imread(filename)[crops]
+            yield img
