@@ -9,6 +9,7 @@ from skimage import io
 from .transform import parse_transforms
 from .utils import (
     Channels,
+    crop_image,
     image_generator,
     parse_filename,
     remove_background,
@@ -124,19 +125,13 @@ class DaskOctopusLiteLoader:
 
             assert isinstance(self._crop, tuple)
 
-            dims = image.ndim
-            shape = image.shape
             crop = np.array(self._crop).astype(np.int64)
 
             # check that we don't exceed any dimensions
-            assert all([crop[i] <= s for i, s in enumerate(shape)])
+            assert all([crop[i] <= s for i, s in enumerate(image.shape)])
 
-            # automagically build the slices for the array
-            cslice = lambda d: slice(
-                int((shape[d] - crop[d]) // 2), int((shape[d] - crop[d]) // 2 + crop[d])
-            )
-            crops = tuple([cslice(d) for d in range(dims)])
-            image = image[crops]
+            # crop the image
+            image = crop_image(image, crop)
 
         # check channel to see if label
         channel = parse_filename(fn)["channel"]
