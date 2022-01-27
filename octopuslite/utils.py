@@ -196,6 +196,7 @@ def image_generator(files, crop: Optional[tuple] = None):
             yield img
     else:
         for filename in files:
+            img = imread(filename)
             img = crop_image(img, crop)
             yield img
 
