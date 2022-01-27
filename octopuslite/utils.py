@@ -183,18 +183,41 @@ def image_generator(files, crop: Optional[tuple] = None):
     crop : tuple, optional
         An optional tuple which can be used to perform a centred crop on the
         image data.
+
+    Yields
+    ------
+    img : np.ndarray
+        An image loaded from the given filename at that iteration.
     """
-    shape = imread(files[0]).shape
-    dims = imread(files[0]).ndim
+
     if crop is None:
         for filename in files:
             img = imread(filename)
             yield img
     else:
-        cslice = lambda d: slice(
-            int((shape[d] - crop[d]) // 2), int((shape[d] - crop[d]) // 2 + crop[d])
-        )
-        crops = tuple([cslice(d) for d in range(dims)])
         for filename in files:
-            img = imread(filename)[crops]
+            img = crop_image(img, crop)
             yield img
+
+
+def crop_image(img, crop):
+    """Crops a central window from an input image given a crop area size tuple
+
+    Parameters
+    ----------
+    img : np.ndarray
+        Input image.
+    crop : tuple
+        An tuple which is used to perform a centred crop on the
+        image data.
+
+    """
+    shape = img.shape
+    dims = img.ndim
+    cslice = lambda d: slice(
+        int((shape[d] - crop[d]) // 2), int((shape[d] - crop[d]) // 2 + crop[d])
+    )
+    crops = tuple([cslice(d) for d in range(dims)])
+    img = img[crops]
+
+    return img
