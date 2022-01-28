@@ -35,7 +35,7 @@ def parse_transforms(path: os.PathLike) -> StackTransformer:
     if path is None:
         return StackTransformer(None)
 
-    if path.endswith(".npy"):
+    if str(path).endswith(".npy"):
         transforms = np.load(path)
         return StackTransformer(transforms)
 
