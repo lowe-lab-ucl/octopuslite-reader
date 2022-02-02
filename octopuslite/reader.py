@@ -118,8 +118,17 @@ class DaskOctopusLiteLoader:
         image = io.imread(fn)
 
         if self._transformer is not None:
-            t = int(parse_filename(fn)["time"])
-            image = self._transformer(image, t)
+            # need to use index of file as some frames may have been removed
+            channel = parse_filename(fn)["channel"]
+            files = [
+                os.path.join(self.path, f)
+                for f in os.listdir(self.path)
+                if f"channel{str(channel.value).zfill(3)}" in f
+                and f.endswith((".tif", ".tiff"))
+            ]
+            files.sort(key=lambda f: parse_filename(f)["time"])
+            idx = files.index(fn)
+            image = self._transformer(image, idx)
 
         if self._crop is not None:
 
