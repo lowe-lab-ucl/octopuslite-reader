@@ -1,11 +1,10 @@
 import enum
 import os
 import re
-from typing import Optional, Tuple
+from typing import Tuple
 
 import numpy as np
 from scipy.ndimage import median_filter
-from skimage.io import imread
 
 OCTOPUSLITE_FILEPATTERN = (
     "img_channel(?P<channel>[0-9]+)_position(?P<position>[0-9]+)"
@@ -167,41 +166,7 @@ def parse_filename(filename: os.PathLike) -> dict:
     return metadata
 
 
-def image_generator(files, crop: Optional[tuple] = None):
-    """Image generator for iterative procesess
-
-    For many timelapse data related procesess (such as calculating mean values
-    and localising objects), using a generator function to iterative load single
-    frames is quicker than computing each frame and calculating using dask.
-
-    Parameters
-    ----------
-    files : list
-        A list of image files which you wish to iterate over. Can be easily
-        generated using the DaskOctopusLiteLoader function 'files'.
-        E.g. image_generator(DaskOctopusLiteLoader.files('channel name'))
-    crop : tuple, optional
-        An optional tuple which can be used to perform a centred crop on the
-        image data.
-
-    Yields
-    ------
-    img : np.ndarray
-        An image loaded from the given filename at that iteration.
-    """
-
-    if crop is None:
-        for filename in files:
-            img = imread(filename)
-            yield img
-    else:
-        for filename in files:
-            img = imread(filename)
-            img = crop_image(img, crop)
-            yield img
-
-
-def crop_image(img, crop):
+def crop_image(img: np.ndarray, crop: Tuple[int]) -> np.ndarray:
     """Crops a central window from an input image given a crop area size tuple
 
     Parameters
@@ -211,6 +176,11 @@ def crop_image(img, crop):
     crop : tuple
         An tuple which is used to perform a centred crop on the
         image data.
+
+    Returns
+    -------
+    img : np.ndarray
+        The cropped image.
 
     """
     shape = img.shape
