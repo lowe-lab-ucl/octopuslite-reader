@@ -80,7 +80,10 @@ class DaskOctopusLiteLoader:
 
         # parse the files
         self._parse_files()
-        self._transformer = parse_transforms(transforms)
+        if transforms:
+            self._transformer = parse_transforms(transforms)
+        else:
+            self._transformer = None
 
     def __contains__(self, channel):
         return channel in self.channels
