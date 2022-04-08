@@ -14,7 +14,7 @@ class StackTransformer:
             return x
 
         tform = tf.AffineTransform(translation=self.transforms[idx, :2, 2])
-        return tf.warp(x, tform, preserve_range=True)
+        return tf.warp(x, tform, order = 0, preserve_range=True)
 
 
 def parse_transforms(path: os.PathLike) -> StackTransformer:
