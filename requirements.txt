@@ -1,4 +1,0 @@
-dask
-numpy
-scipy
-scikit-image
