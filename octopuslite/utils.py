@@ -1,29 +1,15 @@
+import dataclasses
 import enum
 import os
 import re
-from typing import Tuple
+from typing import Tuple, Optional
 
 import numpy as np
 from scipy.ndimage import median_filter
+from skimage import io
 
-OCTOPUSLITE_FILEPATTERN = (
-    "img_channel(?P<channel>[0-9]+)_position(?P<position>[0-9]+)"
-    "_time(?P<time>[0-9]+)_z(?P<z>[0-9]+)"
-)
-
-
-@enum.unique
-class Channels(enum.Enum):
-    BRIGHTFIELD = 0
-    GFP = 1
-    RFP = 2
-    IRFP = 3
-    PHASE = 4
-    WEIGHTS = 50
-    MASK_IRFP = 96
-    MASK_RFP = 97
-    MASK_GFP = 98
-    MASK = 99
+from .metadata import ImageMetadata
+from .transform import StackTransformer
 
 
 def remove_outliers(x: np.ndarray) -> np.ndarray:
@@ -51,7 +37,7 @@ def remove_background(x: np.ndarray) -> np.ndarray:
     Parameters
     ----------
     x : np.ndarray
-        An input image .
+        An input image.
 
     Returns
     -------
@@ -138,34 +124,6 @@ def estimate_mask(x: np.ndarray) -> Tuple[slice]:
     return sh, sw
 
 
-def parse_filename(filename: os.PathLike) -> dict:
-    """Parse an OctopusLite filename and retreive metadata from the file.
-
-    Parameters
-    ----------
-    filename : PathLike
-        The full path to a file to parse.
-
-    Returns
-    -------
-    metadata : dict
-        A dictionary containing the parsed metadata.
-    """
-    pth, filename = os.path.split(filename)
-    params = re.match(OCTOPUSLITE_FILEPATTERN, filename)
-
-    metadata = {
-        "filename": filename,
-        "channel": Channels(int(params.group("channel"))),
-        "time": params.group("time"),
-        "position": params.group("position"),
-        "z": params.group("z"),
-        # "timestamp": os.stat(filename).st_mtime,
-    }
-
-    return metadata
-
-
 def crop_image(img: np.ndarray, crop: Tuple[int]) -> np.ndarray:
     """Crops a central window from an input image given a crop area size tuple
 
@@ -192,3 +150,40 @@ def crop_image(img: np.ndarray, crop: Tuple[int]) -> np.ndarray:
     img = img[crops]
 
     return img
+
+
+def _load_and_process(
+    metadata: ImageMetadata, 
+    *, 
+    crop: Optional[Tuple[int]] = None,
+    remove_bg: bool = False,
+    transformer: Optional[StackTransformer] = None,
+) -> np.ndarray:
+    """Load and crop the image."""
+    image = io.imread(metadata.filename)
+
+    # if self.transformer is not None:
+    #     # need to use index of file as some frames may have been removed
+    #     channel = parse_filename(fn).channel
+    #     files = self.files(channel.name)
+    #     files.sort(key=lambda f: parse_filename(f).time)
+    #     idx = files.index(fn)
+    #     image = self.transformer(image, idx)
+
+    if crop is not None:
+        # crop the image
+        crop = np.array(crop).astype(np.int64)
+        image = crop_image(image, crop)
+
+    # check channel to see if label
+    channel = metadata.channel
+
+    # labels cannot be preprocessed so return here
+    if channel.name.startswith(("MASK", "WEIGHTS")):
+        return image
+
+    if remove_bg:
+        cleaned = remove_outliers(image)
+        image = remove_background(cleaned)
+
+    return image

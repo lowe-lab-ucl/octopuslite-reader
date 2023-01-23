@@ -1,1 +1,1 @@
-from .reader import DaskOctopusLiteLoader
+from .reader import DaskOctopusLite, VirtualOctopusLite
