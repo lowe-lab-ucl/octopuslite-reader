@@ -44,10 +44,11 @@ class DaskOctopusLite(base.BaseReader):
         Return the channels found in the dataset.
     path :
         Return the path to the dataset.
+
+    Methods
+    -------
     files(channel_name) :
         Return the pathname of all channel_name images found in the dataset.
-    channel_name_from_index(channel_value):
-        Return the channel specified by channel_value.
 
     Usage
     -----

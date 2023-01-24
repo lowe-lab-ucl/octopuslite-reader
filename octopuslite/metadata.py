@@ -5,7 +5,7 @@ import enum
 import os
 import re
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import numpy as np
 
@@ -128,10 +128,37 @@ class ImageMetadata:
     experiment: str = "Default"
     transform: Optional[np.ndarray] = None
 
+    @staticmethod
+    def from_dict(params: Dict[str, Any]) -> ImageMetadata:
+        metadata = ImageMetadata(
+            filename=params["filename"],
+            experiment=params.get("experiment", "Default"),
+            channel=Channels(int(params["channel"])),
+            position=WellPositionID(params["position"]),
+            time=Timestamp(params["time"]),
+            z=int(params.get("z", 0)),
+        )
+        return metadata
+
+
+def metadata_from_filename(
+    filename: os.PathLike, pattern: str
+) -> Dict[str, Any]:
+    filename = Path(filename)
+    filestem = str(filename.stem)
+    params = re.match(pattern, filestem)
+
+    if not params:
+        raise ValueError("Could not parse filename with pattern.")
+
+    params = params.groupdict()
+    params.update({"filename": filename})
+
+    return params
+
 
 class IncucyteMetadata(ImageMetadata):
     """Incucyte config
-
 
     <FileName Prefix>_<Site/Well ID>_<ImageNumber><Date/Timestamp><File Format>,
     where the File Name Timestamp option determines the timestamp.
@@ -143,40 +170,24 @@ class IncucyteMetadata(ImageMetadata):
 
     @staticmethod
     def from_filename(filename: os.PathLike) -> IncucyteMetadata:
-        filename = Path(filename)
-        filestem = str(filename.stem)
-        params = re.match(INCUCYTE_FILEPATTERN, filestem)
-
-        metadata = IncucyteMetadata(
-            filename=filename,
-            channel=Channels[params["channel"].upper()],
-            position=WellPositionID(params["position"]),
-            time=Timestamp(params["time"]),
-        )
-
-        return metadata
+        params = metadata_from_filename(filename, INCUCYTE_FILEPATTERN)
+        return IncucyteMetadata.from_dict(params)
 
     def filename(self) -> os.PathLike:
         pass
 
 
 class MicromanagerMetadata(ImageMetadata):
-    """Incucyte config"""
+    """Micromanager/Octopus config
+
+    img_channel002_position012_time000000995_z000
+
+    """
 
     @staticmethod
     def from_filename(filename: os.PathLike) -> MicromanagerMetadata:
-        filename = Path(filename)
-        filestem = str(filename.stem)
-
-        params = re.match(MICROMANAGER_FILEPATTERN, filestem).groupdict()
-        metadata = MicromanagerMetadata(
-            filename=filename,
-            channel=Channels(int(params["channel"])),
-            position=WellPositionID(params["position"]),
-            time=Timestamp(params["time"]),
-            z=int(params["z"]),
-        )
-        return metadata
+        params = metadata_from_filename(filename, MICROMANAGER_FILEPATTERN)
+        return MicromanagerMetadata.from_dict(params)
 
     def filename(self) -> os.PathLike:
         pass
