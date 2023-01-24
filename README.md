@@ -9,10 +9,14 @@ address different channels using the `Channels` enumerator.
 
 Usage
 -----
->>> images =  DaskOctopusLiteLoader(path = '/path/to/your/data/',
-                                    crop = (1200,1600),
-                                    transforms = 'path/to/transform_array.npy',
-                                    remove_background = True)
+>>> from octopuslite import DaskOctopusLite, MetadataParser
+>>> images =  DaskOctopusLite(
+    path = '/path/to/your/data/',
+    crop = (1200,1600),
+    transforms = 'path/to/transform_array.npy',
+    remove_background = True,
+    parser = MetadataParser.OCTOPUS,
+)
 >>> gfp = images["GFP"]
 >>> gfp_filenames = images.files("GFP")
 

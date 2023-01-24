@@ -5,6 +5,7 @@ import enum
 import os
 import re
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 
@@ -125,7 +126,7 @@ class ImageMetadata:
     time: Timestamp
     z: int = 0
     experiment: str = "Default"
-    transform: np.ndarray = np.empty((2, 2), dtype=np.float32)
+    transform: Optional[np.ndarray] = None
 
 
 class IncucyteMetadata(ImageMetadata):
@@ -148,7 +149,6 @@ class IncucyteMetadata(ImageMetadata):
 
         metadata = IncucyteMetadata(
             filename=filename,
-            channel=None,
             channel=Channels[params["channel"].upper()],
             position=WellPositionID(params["position"]),
             time=Timestamp(params["time"]),
