@@ -1,11 +1,11 @@
-from octopuslite import metadata
-
 import pytest
+
+from octopuslite import metadata
 
 
 def test_well_position_malformed():
     with pytest.raises(ValueError):
-        well = metadata.WellPositionID("BB")
+        well = metadata.WellPositionID("BB")  # noqa: F841
 
 
 def test_well_position_alphanumeric():
@@ -13,7 +13,7 @@ def test_well_position_alphanumeric():
 
     well = metadata.WellPositionID("A11")
     assert well.raw == "A11"
-    assert well.alpha == "A" 
+    assert well.alpha == "A"
     assert well.numeric == 11
 
 
@@ -60,18 +60,18 @@ def test_well_ordering_sort():
 
 def test_timestamp_from_numeric():
     timestamp = metadata.Timestamp("11")
-    assert timestamp.is_numeric() == True
+    assert timestamp.is_numeric() is True
     assert timestamp.as_numeric() == 11
 
 
 def test_timestamp_from_timestamp():
     timestamp = metadata.Timestamp("06d12h05m")
-    assert timestamp.is_numeric() == False
+    assert timestamp.is_numeric() is False
     assert timestamp.as_seconds() == 561900
 
 
 def test_timestamp_ordering():
-    pass 
+    pass
 
 
 def test_timestamp_sorting():

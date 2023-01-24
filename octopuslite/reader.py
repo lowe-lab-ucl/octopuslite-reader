@@ -1,21 +1,11 @@
-import os
-import warnings
-from typing import Any, Dict, Optional, Union
-
 import dask
 import dask.array as da
-import dataclasses
 import numpy as np
 from skimage import io
 
 from . import base
-from .metadata import Channels, ImageMetadata
-from .transform import parse_transforms
-from .utils import (
-    remove_background,
-    remove_outliers,
-    _load_and_process,
-)
+from .metadata import Channels
+from .utils import _load_and_process
 
 
 class DaskOctopusLite(base.BaseReader):
@@ -35,7 +25,7 @@ class DaskOctopusLite(base.BaseReader):
         Transform matrix (as np.ndarray) to be applied to the image stack.
     remove_background : bool
         Use a estimated polynomial surface to remove uneven illumination.
-    parser : enum 
+    parser : enum
         A parser for metadata.
     position : str, optional
         An optional position identifier.
@@ -75,8 +65,7 @@ class DaskOctopusLite(base.BaseReader):
 
     def files(self, channel_name: str) -> list:
         return [
-            f.filename 
-            for f in self._metadata[Channels[channel_name.upper()]]
+            f.filename for f in self._metadata[Channels[channel_name.upper()]]
         ]
 
     def post_init(self):
@@ -86,7 +75,9 @@ class DaskOctopusLite(base.BaseReader):
         files = list(self.path.glob("*.tif*"))
 
         if not files:
-            raise FileNotFoundError(f"No files found in directory: {self.path}")
+            raise FileNotFoundError(
+                f"No files found in directory: {self.path}"
+            )
 
         # take a sample of the dataset
         sample = io.imread(files[0])
@@ -115,9 +106,9 @@ class DaskOctopusLite(base.BaseReader):
             self._data[channel] = [
                 da.from_delayed(
                     dask.delayed(_load_and_process)(
-                        meta, 
-                        crop=self.crop, 
-                        transformer=self.transformer, 
+                        meta,
+                        crop=self.crop,
+                        transformer=self.transformer,
                         remove_bg=self.remove_background,
                     ),
                     shape=self._shape,

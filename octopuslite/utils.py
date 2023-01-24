@@ -1,8 +1,4 @@
-import dataclasses
-import enum
-import os
-import re
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
 import numpy as np
 from scipy.ndimage import median_filter
@@ -144,7 +140,8 @@ def crop_image(img: np.ndarray, crop: Tuple[int]) -> np.ndarray:
     shape = img.shape
     dims = img.ndim
     cslice = lambda d: slice(
-        int((shape[d] - crop[d]) // 2), int((shape[d] - crop[d]) // 2 + crop[d])
+        int((shape[d] - crop[d]) // 2),
+        int((shape[d] - crop[d]) // 2 + crop[d]),
     )
     crops = tuple([cslice(d) for d in range(dims)])
     img = img[crops]
@@ -153,8 +150,8 @@ def crop_image(img: np.ndarray, crop: Tuple[int]) -> np.ndarray:
 
 
 def _load_and_process(
-    metadata: ImageMetadata, 
-    *, 
+    metadata: ImageMetadata,
+    *,
     crop: Optional[Tuple[int]] = None,
     remove_bg: bool = False,
     transformer: Optional[StackTransformer] = None,

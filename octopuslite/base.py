@@ -1,13 +1,10 @@
-
 import abc
-import dataclasses
 import os
-
-import numpy as np
-
-import dask.array as da
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
+
+import dask.array as da
+import numpy as np
 
 from .metadata import Channels, ImageMetadata, MetadataParser
 from .transform import parse_transforms
@@ -48,7 +45,7 @@ class BaseReader(abc.ABC):
     def shape(self):
         return self._shape
 
-    @property 
+    @property
     def metadata(self):
         return self._metadata
 
@@ -63,7 +60,9 @@ class BaseReader(abc.ABC):
             channel_name = Channels[channel_name.upper()]
 
         if channel_name not in self.channels:
-            raise ValueError(f"Channel {channel_name} not found in {self.path}")
+            raise ValueError(
+                f"Channel {channel_name} not found in {self.path}"
+            )
 
         return self._data[channel_name]
 
