@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import datetime
 import enum
 import os
 import re
@@ -23,10 +24,18 @@ class Channels(enum.IntEnum):
     MASK_GFP = 98
     MASK = 99
 
+    @staticmethod
+    def from_raw(value: str) -> Channels:
+        try:
+            channel = Channels(int(value))
+        except ValueError:
+            channel = Channels[value.upper()]
+        return channel
+
 
 WELL_ID_PATTERN = "(?P<alpha>[A-Z]?)(?P<numeric>[0-9]+)"
 
-TIMESTAMP_PATTERN = "(?P<days>[0-9]+)d(?P<hours>[0-9]+)h(?P<mins>[0-9]+)m"
+TIMESTAMP_PATTERN = "(?P<days>[0-9]+)d(?P<hours>[0-9]+)h(?P<minutes>[0-9]+)m"
 
 MICROMANAGER_FILEPATTERN = (
     "img_channel(?P<channel>[0-9]+)_position(?P<position>[0-9]+)"
@@ -35,8 +44,8 @@ MICROMANAGER_FILEPATTERN = (
 
 
 INCUCYTE_FILEPATTERN = (
-    "(?<experiment[A-Za-z0-9]+)_(?P<channel>[a-z]+)"
-    "_(?P<position>[A-Z][0-9]+)_(?P<time>[0-9]+d[0-9]+h[0-9]+m)"
+    "(?P<experiment>[a-zA-Z0-9]+)_(?P<channel>[a-z]+)"
+    "_(?P<position>[A-Z][0-9]+)_[0-9]*_(?P<time>[0-9]+d[0-9]+h[0-9]+m)"
 )
 
 
@@ -99,12 +108,8 @@ class Timestamp:
         params = re.match(TIMESTAMP_PATTERN, self.raw)
         params_numeric = {k: int(v) for k, v in params.groupdict().items()}
 
-        seconds = (
-            params_numeric["days"] * 24 * 60 * 60
-            + params_numeric["hours"] * 60 * 60
-            + params_numeric["mins"] * 60
-        )
-        return seconds
+        delta = datetime.timedelta(**params_numeric)
+        return delta.total_seconds()
 
     def __lt__(self, cls: Timestamp) -> bool:
         if self.is_numeric() and cls.is_numeric():
@@ -133,7 +138,7 @@ class ImageMetadata:
         metadata = ImageMetadata(
             filename=params["filename"],
             experiment=params.get("experiment", "Default"),
-            channel=Channels(int(params["channel"])),
+            channel=Channels.from_raw(params["channel"]),
             position=WellPositionID(params["position"]),
             time=Timestamp(params["time"]),
             z=int(params.get("z", 0)),

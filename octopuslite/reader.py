@@ -8,7 +8,7 @@ from .metadata import Channels
 from .utils import _load_and_process
 
 
-class DaskOctopusLite(base.BaseReader):
+class DaskOctopus(base.BaseReader):
     """Load multidimensional image stacks using lazy loading.
 
     A simple class to load OctopusLite data from a directory. Caches data once
@@ -80,17 +80,26 @@ class DaskOctopusLite(base.BaseReader):
                 f"No files found in directory: {self.path}"
             )
 
-        # take a sample of the dataset
-        sample = io.imread(files[0])
-        self._shape = sample.shape if self.crop is None else self.crop
-
         channels = {k: [] for k in Channels}
 
         # parse all the files
-        for f in files:
-            metadata = self.parser.from_filename(f)
-            channel = metadata.channel
-            channels[channel].append(metadata)
+        metadata = [self.parser.from_filename(f) for f in files]
+
+        if self.position is not None:
+            metadata = [m for m in metadata if m.position == self.position]
+
+        if not metadata:
+            raise ValueError(
+                "No data could be found with matching parameters."
+            )
+
+        for meta in metadata:
+            channel = meta.channel
+            channels[channel].append(meta)
+
+        # take a sample of the dataset
+        sample = io.imread(metadata[0].filename)
+        self._shape = sample.shape if self.crop is None else self.crop
 
         # sort them by time
         for channel in channels.keys():
@@ -122,7 +131,14 @@ class DaskOctopusLite(base.BaseReader):
             self._data[channel] = da.stack(self._data[channel], axis=0)
 
 
-DaskOctopusLiteLoader = DaskOctopusLite
+def DaskOctopusLiteLoader(*args, **kwargs):
+    import warnings
+
+    warnings.warn(
+        "`DaskOctopusLiteLoader` is deprecated, use `DaskOctopus` instead.",
+        DeprecationWarning,
+    )
+    return DaskOctopus(*args, **kwargs)
 
 
 # def remove_bg(x):

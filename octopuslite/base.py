@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Union
 import dask.array as da
 import numpy as np
 
-from .metadata import Channels, ImageMetadata, MetadataParser
+from .metadata import Channels, ImageMetadata, MetadataParser, WellPositionID
 from .transform import parse_transforms
 
 
@@ -26,6 +26,9 @@ class BaseReader(abc.ABC):
         self.parser = parser.value
         self.transformer = parse_transforms(transforms)
         self.remove_background = remove_background
+        self.position = (
+            WellPositionID(position) if position is not None else None
+        )
         self._shape: tuple = ()
         self._data: Dict[str, Any] = {}
         self._initalized: bool = False

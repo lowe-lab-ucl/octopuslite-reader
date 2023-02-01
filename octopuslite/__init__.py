@@ -1,2 +1,2 @@
 from .metadata import MetadataParser
-from .reader import DaskOctopusLite
+from .reader import DaskOctopus
