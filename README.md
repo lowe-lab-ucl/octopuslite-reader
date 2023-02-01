@@ -10,7 +10,7 @@ address different channels using the `Channels` enumerator.
 Usage
 -----
 >>> from octopuslite import DaskOctopus, MetadataParser
->>> images =  DaskOctopusLite(
+>>> images =  DaskOctopus(
     path = '/path/to/your/data/',
     crop = (1200,1600),
     transforms = 'path/to/transform_array.npy',
