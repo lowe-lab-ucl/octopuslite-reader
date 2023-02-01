@@ -1,23 +1,14 @@
-import os
-import warnings
-from typing import Optional, Union
-
 import dask
 import dask.array as da
 import numpy as np
 from skimage import io
 
-from .transform import parse_transforms
-from .utils import (
-    Channels,
-    crop_image,
-    parse_filename,
-    remove_background,
-    remove_outliers,
-)
+from . import base
+from .metadata import Channels
+from .utils import _load_and_process
 
 
-class DaskOctopusLiteLoader:
+class DaskOctopus(base.BaseReader):
     """Load multidimensional image stacks using lazy loading.
 
     A simple class to load OctopusLite data from a directory. Caches data once
@@ -34,6 +25,10 @@ class DaskOctopusLiteLoader:
         Transform matrix (as np.ndarray) to be applied to the image stack.
     remove_background : bool
         Use a estimated polynomial surface to remove uneven illumination.
+    parser : enum
+        A parser for metadata.
+    position : str, optional
+        An optional position identifier.
 
     Methods
     -------
@@ -49,10 +44,11 @@ class DaskOctopusLiteLoader:
         Return the channels found in the dataset.
     path :
         Return the path to the dataset.
+
+    Methods
+    -------
     files(channel_name) :
         Return the pathname of all channel_name images found in the dataset.
-    channel_name_from_index(channel_value):
-        Return the channel specified by channel_value.
 
     Usage
     -----
@@ -61,139 +57,128 @@ class DaskOctopusLiteLoader:
     >>> gfp_filenames = octopus.files("GFP")
     """
 
-    def __init__(
-        self,
-        path: str,
-        crop: Optional[tuple] = None,
-        transforms: Optional[os.PathLike] = None,
-        remove_background: bool = True,
-    ):
-        self.path = path
-        self._files = {}
-        self._lazy_arrays = {}
-        self._crop = crop
-        self._shape = ()
-        self._remove_background = remove_background
-
-        if self._crop is not None:
-            print(f"Using cropping: {crop}")
-
-        # parse the files
-        self._parse_files()
-        if transforms:
-            self._transformer = parse_transforms(transforms)
-        else:
-            self._transformer = None
-
-    def __contains__(self, channel):
-        return channel in self.channels
-
     @property
     def channels(self):
-        return list(self._files.keys())
+        return list(self._metadata.keys())
 
-    @property
-    def shape(self):
-        return self._shape
-
-    def __getitem__(self, channel_name: Union[str, Channels]):
-
-        if isinstance(channel_name, str):
-            channel_name = Channels[channel_name.upper()]
-
-        if channel_name not in self.channels:
-            raise ValueError(f"Channel {channel_name} not found in {self.path}")
-
-        return self._lazy_arrays[channel_name]
+    def __len__(self):
+        return 0
 
     def files(self, channel_name: str) -> list:
-        return self._files[Channels[channel_name.upper()]]
+        return [
+            f.filename for f in self._metadata[Channels[channel_name.upper()]]
+        ]
 
-    def _load_and_process(self, fn: str) -> np.ndarray:
-        """Load and crop the image."""
-        image = io.imread(fn)
-
-        if self._transformer is not None:
-            # need to use index of file as some frames may have been removed
-            channel = parse_filename(fn)["channel"]
-            files = self.files(channel.name)
-            files.sort(key=lambda f: parse_filename(f)["time"])
-            idx = files.index(fn)
-            image = self._transformer(image, idx)
-
-        if self._crop is not None:
-
-            assert isinstance(self._crop, tuple)
-
-            crop = np.array(self._crop).astype(np.int64)
-
-            # check that we don't exceed any dimensions
-            assert all([crop[i] <= s for i, s in enumerate(image.shape)])
-
-            # crop the image
-            image = crop_image(image, crop)
-
-        # check channel to see if label
-        channel = parse_filename(fn)["channel"]
-        # labels cannot be preprocessed so return here
-        if channel.name.startswith(("MASK", "WEIGHTS")):
-            return image
-
-        if self._remove_background:
-            cleaned = remove_outliers(image)
-            image = remove_background(cleaned)
-            if self._crop is None:
-
-                warnings.warn(
-                    "Background removal works best on cropped, aligned image. Will fail on uncropped, aligned images due to border effect."
-                )
-
-        return image
-
-    def _parse_files(self):
+    def post_init(self):
         """Parse out the files from the folder and create lazy arrays."""
 
         # find the files in the dataset
-        files = [
-            os.path.join(self.path, f)
-            for f in os.listdir(self.path)
-            if f.endswith((".tif", ".tiff"))
-        ]
+        files = list(self.path.glob("*.tif*"))
 
         if not files:
-            raise FileNotFoundError(f"No files found in directory: {self.path}")
-
-        # take a sample of the dataset
-        sample = io.imread(files[0])
-        self._shape = sample.shape if self._crop is None else self._crop
+            raise FileNotFoundError(
+                f"No files found in directory: {self.path}"
+            )
 
         channels = {k: [] for k in Channels}
 
         # parse all the files
-        for f in files:
-            channel = parse_filename(f)["channel"]
-            channels[channel].append(f)
+        metadata = [self.parser.from_filename(f) for f in files]
+
+        if self.position is not None:
+            metadata = [m for m in metadata if m.position == self.position]
+
+        if not metadata:
+            raise ValueError(
+                "No data could be found with matching parameters."
+            )
+
+        for meta in metadata:
+            channel = meta.channel
+            channels[channel].append(meta)
+
+        # take a sample of the dataset
+        sample = io.imread(metadata[0].filename)
+        self._shape = sample.shape if self.crop is None else self.crop
 
         # sort them by time
         for channel in channels.keys():
-            channels[channel].sort(key=lambda f: parse_filename(f)["time"])
+            channels[channel].sort(key=lambda metadata: metadata.time)
 
         # set the output type
-        dtype = np.float32 if self._remove_background else sample.dtype
+        dtype = np.float32 if self.remove_background else sample.dtype
 
         # remove any channels that are empty
-        self._files = {k: v for k, v in channels.items() if v}
+        self._metadata = {k: v for k, v in channels.items() if v}
 
         # now set up the lazy loaders
-        for channel, files in self._files.items():
-            self._lazy_arrays[channel] = [
+        for channel, metadata in self._metadata.items():
+            self._data[channel] = [
                 da.from_delayed(
-                    dask.delayed(self._load_and_process)(fn),
+                    dask.delayed(_load_and_process)(
+                        meta,
+                        crop=self.crop,
+                        transformer=self.transformer,
+                        remove_bg=self.remove_background,
+                    ),
                     shape=self._shape,
                     dtype=dtype,
                 )
-                for fn in files
+                for meta in metadata
             ]
 
             # concatenate them along the time axis
-            self._lazy_arrays[channel] = da.stack(self._lazy_arrays[channel], axis=0)
+            self._data[channel] = da.stack(self._data[channel], axis=0)
+
+
+def DaskOctopusLiteLoader(*args, **kwargs):
+    import warnings
+
+    warnings.warn(
+        "`DaskOctopusLiteLoader` is deprecated, use `DaskOctopus` instead.",
+        DeprecationWarning,
+    )
+    return DaskOctopus(*args, **kwargs)
+
+
+def DaskOctopusLite(*args, **kwargs):
+    import warnings
+
+    warnings.warn(
+        "`DaskOctopusLite` is deprecated, use `DaskOctopus` instead.",
+        DeprecationWarning,
+    )
+    return DaskOctopus(*args, **kwargs)
+
+
+# def remove_bg(x):
+#     x = remove_outliers(x)
+#     x = remove_background(x)
+#     return x
+
+
+# class VirtualOctopusLite(base.BaseReader):
+#     """Virtual reader for on-disk single tiff stacks."""
+
+#     def post_init(self):
+#         stack = io.imread(self.path)
+#         self._shape = stack.shape[1:-1]
+#         self._channels = [Channels(i) for i in range(stack.shape[-1])]
+#         self._files = self.path
+#         self._data = {
+#             channel: da.stack(
+#                 [
+#                     da.from_delayed(
+#                         dask.delayed(remove_bg)(stack[n, ..., idx]),
+#                         shape=self._shape,
+#                         dtype=np.float32,
+#                     )
+#                     for n in range(stack.shape[0])
+#                 ]
+#             )
+#             for idx, channel in enumerate(self.channels)
+#         }
+
+#     @property
+#     def channels(self):
+#         return self._channels
