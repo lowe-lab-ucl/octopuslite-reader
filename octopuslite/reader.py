@@ -141,6 +141,16 @@ def DaskOctopusLiteLoader(*args, **kwargs):
     return DaskOctopus(*args, **kwargs)
 
 
+def DaskOctopusLite(*args, **kwargs):
+    import warnings
+
+    warnings.warn(
+        "`DaskOctopusLite` is deprecated, use `DaskOctopus` instead.",
+        DeprecationWarning,
+    )
+    return DaskOctopus(*args, **kwargs)
+
+
 # def remove_bg(x):
 #     x = remove_outliers(x)
 #     x = remove_background(x)
