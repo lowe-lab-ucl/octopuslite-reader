@@ -1,4 +1,4 @@
-# octopuslite-reader
+# DaskOctopus
 
 ```
 Load multidimensional image stacks using lazy loading.
