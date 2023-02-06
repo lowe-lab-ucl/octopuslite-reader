@@ -45,7 +45,7 @@ MICROMANAGER_FILEPATTERN = (
 
 INCUCYTE_FILEPATTERN = (
     "(?P<experiment>[a-zA-Z0-9]+)_(?P<channel>[a-z]+)"
-    "_(?P<position>[A-Z][0-9]+)_(<?P<location>[0-9]+)"
+    "_(?P<position>[A-Z][0-9]+)_(?P<location>[0-9]+)"
     "_(?P<time>[0-9]+d[0-9]+h[0-9]+m)"
 )
 
