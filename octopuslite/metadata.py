@@ -10,6 +10,8 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 
+from . import patterns
+
 
 @enum.unique
 class Channels(enum.IntEnum):
@@ -33,23 +35,6 @@ class Channels(enum.IntEnum):
         return channel
 
 
-WELL_ID_PATTERN = "(?P<alpha>[A-Z]?)(?P<numeric>[0-9]+)"
-
-TIMESTAMP_PATTERN = "(?P<days>[0-9]+)d(?P<hours>[0-9]+)h(?P<minutes>[0-9]+)m"
-
-MICROMANAGER_FILEPATTERN = (
-    "img_channel(?P<channel>[0-9]+)_position(?P<position>[0-9]+)"
-    "_time(?P<time>[0-9]+)_z(?P<z>[0-9]+)"
-)
-
-
-INCUCYTE_FILEPATTERN = (
-    "(?P<experiment>[a-zA-Z0-9]+)_(?P<channel>[a-z]+)"
-    "_(?P<position>[A-Z][0-9]+)_(<?P<location>[0-9]+)"
-    "_(?P<time>[0-9]+d[0-9]+h[0-9]+m)"
-)
-
-
 @dataclasses.dataclass
 class WellPositionID:
     """A dataclass to store a well position identifier.
@@ -62,20 +47,20 @@ class WellPositionID:
     raw: str
 
     def __post_init__(self):
-        params = re.match(WELL_ID_PATTERN, self.raw)
+        params = re.match(patterns.WELL_ID_PATTERN, self.raw)
         if not params:
             raise ValueError(f"{self.raw} is not a valid position ID.")
 
     @property
     def alpha(self) -> str:
-        params = re.match(WELL_ID_PATTERN, self.raw)
+        params = re.match(patterns.WELL_ID_PATTERN, self.raw)
         if not params:
             return ""
         return params.groupdict()["alpha"]
 
     @property
     def numeric(self) -> int:
-        params = re.match(WELL_ID_PATTERN, self.raw).groupdict()
+        params = re.match(patterns.WELL_ID_PATTERN, self.raw).groupdict()
         return int(params["numeric"])
 
     def __lt__(self, cls: WellPositionID) -> bool:
@@ -92,7 +77,7 @@ class Timestamp:
     raw: str
 
     def is_numeric(self) -> bool:
-        params = re.match(TIMESTAMP_PATTERN, self.raw)
+        params = re.match(patterns.TIMESTAMP_PATTERN, self.raw)
         return params is None
 
     def as_numeric(self) -> int:
@@ -106,7 +91,7 @@ class Timestamp:
                 "Timestamp is stored as an index. Cannot convert to seconds."
             )
 
-        params = re.match(TIMESTAMP_PATTERN, self.raw)
+        params = re.match(patterns.TIMESTAMP_PATTERN, self.raw)
         params_numeric = {k: int(v) for k, v in params.groupdict().items()}
 
         delta = datetime.timedelta(**params_numeric)
@@ -176,7 +161,9 @@ class IncucyteMetadata(ImageMetadata):
 
     @staticmethod
     def from_filename(filename: os.PathLike) -> IncucyteMetadata:
-        params = metadata_from_filename(filename, INCUCYTE_FILEPATTERN)
+        params = metadata_from_filename(
+            filename, patterns.INCUCYTE_FILEPATTERN
+        )
         return IncucyteMetadata.from_dict(params)
 
     def filename(self) -> os.PathLike:
@@ -192,7 +179,9 @@ class MicromanagerMetadata(ImageMetadata):
 
     @staticmethod
     def from_filename(filename: os.PathLike) -> MicromanagerMetadata:
-        params = metadata_from_filename(filename, MICROMANAGER_FILEPATTERN)
+        params = metadata_from_filename(
+            filename, patterns.MICROMANAGER_FILEPATTERN
+        )
         return MicromanagerMetadata.from_dict(params)
 
     def filename(self) -> os.PathLike:
