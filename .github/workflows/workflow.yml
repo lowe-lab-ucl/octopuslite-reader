@@ -17,6 +17,9 @@ jobs:
       - name: Run Flake8
         run: |
           flake8
+      - name: Install octopuslite
+        run: |
+          pip install -e .
       - name: Run tests
         run: |
-          pytest .
+          pytest
