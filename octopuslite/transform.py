@@ -11,7 +11,6 @@ class StackTransformer:
         self.transforms = transforms
 
     def __call__(self, x, idx):
-
         if self.transforms is None:
             return x
 

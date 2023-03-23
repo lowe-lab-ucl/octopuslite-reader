@@ -18,7 +18,7 @@ class BaseReader(abc.ABC):
         position: Optional[str] = None,
         crop: Optional[tuple] = None,
         transforms: Optional[Union[np.ndarray, os.PathLike]] = None,
-        remove_background: bool = True,
+        remove_background: bool = False,
         parser: MetadataParser = MetadataParser.OCTOPUS,
     ):
         self.path = Path(path)

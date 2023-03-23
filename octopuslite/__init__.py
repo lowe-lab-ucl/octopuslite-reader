@@ -1,2 +1,2 @@
-from .metadata import MetadataParser
-from .reader import *
+from .metadata import MetadataParser  # noqa: F401
+from .reader import DaskOctopus  # noqa: F401

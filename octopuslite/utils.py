@@ -120,6 +120,13 @@ def estimate_mask(x: np.ndarray) -> Tuple[slice]:
     return sh, sw
 
 
+def _crop_slice(shape: tuple, crop: tuple, dim: int) -> slice:
+    return slice(
+        int((shape[dim] - crop[dim]) // 2),
+        int((shape[dim] - crop[dim]) // 2 + crop[dim]),
+    )
+
+
 def crop_image(img: np.ndarray, crop: Tuple[int]) -> np.ndarray:
     """Crops a central window from an input image given a crop area size tuple
 
@@ -139,11 +146,8 @@ def crop_image(img: np.ndarray, crop: Tuple[int]) -> np.ndarray:
     """
     shape = img.shape
     dims = img.ndim
-    cslice = lambda d: slice(
-        int((shape[d] - crop[d]) // 2),
-        int((shape[d] - crop[d]) // 2 + crop[d]),
-    )
-    crops = tuple([cslice(d) for d in range(dims)])
+
+    crops = tuple([_crop_slice(shape, crop, d) for d in range(dims)])
     img = img[crops]
 
     return img
