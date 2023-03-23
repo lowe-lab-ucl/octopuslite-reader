@@ -119,14 +119,14 @@ class ImageMetadata:
     experiment: str = "Default"
     transform: Optional[np.ndarray] = None
 
-    @staticmethod
-    def from_dict(params: Dict[str, Any]) -> ImageMetadata:
-        metadata = ImageMetadata(
+    @classmethod
+    def from_dict(cls, params: Dict[str, Any]) -> ImageMetadata:
+        metadata = cls(
             filename=params["filename"],
             experiment=params.get("experiment", "Default"),
             channel=Channels.from_raw(params["channel"]),
             position=WellPositionID(params["position"]),
-            time=Timestamp(params["time"]),
+            time=Timestamp(str(params["time"])),
             z=int(params.get("z", 0)),
         )
         return metadata
@@ -166,8 +166,8 @@ class IncucyteMetadata(ImageMetadata):
         )
         return IncucyteMetadata.from_dict(params)
 
-    def filename(self) -> os.PathLike:
-        pass
+    def to_filename(self) -> os.PathLike:
+        raise NotImplementedError
 
 
 class MicromanagerMetadata(ImageMetadata):
@@ -184,8 +184,14 @@ class MicromanagerMetadata(ImageMetadata):
         )
         return MicromanagerMetadata.from_dict(params)
 
-    def filename(self) -> os.PathLike:
-        pass
+    def to_filename(self) -> os.PathLike:
+        fstr = (
+            f"img_channel{self.channel.value:>03d}_"
+            f"position{self.position.numeric:>03d}_"
+            f"time{self.time.as_numeric():>09d}_"
+            f"z{self.z:>03d}"
+        )
+        return fstr
 
 
 class MetadataParser(enum.Enum):
