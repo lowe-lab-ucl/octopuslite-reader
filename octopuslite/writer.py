@@ -8,7 +8,7 @@ from typing import Optional
 import numpy.typing as npt
 
 
-class Writer:
+class OctopusWriter:
     def __init__(
         self,
         path: os.PathLike,
@@ -45,7 +45,7 @@ class Writer:
 def write(data: npt.NDArray, path: os.PathLike, **kwargs) -> None:
     """Write out image data in a format that can be read by DaskOctopus."""
 
-    writer = Writer(path, **kwargs)
+    writer = OctopusWriter(path, **kwargs)
 
     for t in range(data.shape[0]):
         writer.write(data[t, ...], t)

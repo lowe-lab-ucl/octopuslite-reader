@@ -1,6 +1,5 @@
-from octopuslite import DaskOctopus
+from octopuslite import Channels, DaskOctopus
 from octopuslite.writer import write
-from octopuslite.metadata import Channels
 
 
 from pathlib import Path
